@@ -11,7 +11,7 @@
 
     <name>spring-boot-security-filters</name>
     <description>开箱即用的 Spring Boot 安全过滤器套件：API 限流 + HTTP 安全响应头</description>
-    <url>https://github.com/labui09/spring-boot-security-filters</url>
+    <url>https://github.com/Fallen-leaves089/spring-boot-security-filters</url>
 
     <licenses>
         <license>
