@@ -5,7 +5,7 @@
 
 Spring Boot 安全过滤器：限流 + 安全头，零代码接入。
 
-MIT License. Copyright (c) 2024 labui09.
+MIT License. Copyright (c) 2024 Fallen-leaves089.
 
 ---
 
