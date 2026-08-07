@@ -1,7 +1,7 @@
 # spring-boot-security-filters
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-labui09%2Fspring--boot--security--filters-lightgrey?logo=github)](https://github.com/labui09/spring-boot-security-filters)
+[![GitHub](https://img.shields.io/badge/GitHub-Fallen-leaves089%2Fspring--boot--security--filters-lightgrey?logo=github)](https://github.com/Fallen-leaves089/spring-boot-security-filters)
 
 Spring Boot 安全过滤器：限流 + 安全头，零代码接入。
 
@@ -24,7 +24,7 @@ MIT License. Copyright (c) 2024 Fallen-leaves089.
 
 ```xml
 <dependency>
-    <groupId>io.github.labui09</groupId>
+    <groupId>io.github.Fallen-leaves089</groupId>
     <artifactId>spring-boot-security-filters</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -33,7 +33,7 @@ MIT License. Copyright (c) 2024 Fallen-leaves089.
 ### Gradle
 
 ```gradle
-implementation 'io.github.labui09:spring-boot-security-filters:1.0.0'
+implementation 'io.github.Fallen-leaves089:spring-boot-security-filters:1.0.0'
 ```
 
 > 需要 Spring Boot 3.2.x + Java 17。
