@@ -1,4 +1,4 @@
-package io.github.labui09.security.filters;
+package io.github.fallenleaves089.security.filters;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
