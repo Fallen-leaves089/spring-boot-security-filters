@@ -2,6 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub](https://img.shields.io/badge/GitHub-Fallen-leaves089%2Fspring--boot--security--filters-lightgrey?logo=github)](https://github.com/Fallen-leaves089/spring-boot-security-filters)
+[![Build](https://img.shields.io/github/actions/workflow/status/Fallen-leaves089/spring-boot-security-filters/ci.yml?branch=main&logo=github)](https://github.com/Fallen-leaves089/spring-boot-security-filters/actions)
 
 Spring Boot 安全过滤器：限流 + 安全头，零代码接入。
 
@@ -60,6 +61,16 @@ security:
 ```
 
 无需任何 Java 代码，启动项目即可看到安全响应头。
+
+启动项目后，可以用 curl 验证效果：
+
+```bash
+# 查看注入的安全响应头
+curl -sI http://localhost:8080/api/hello | grep -iE 'content-security-policy|x-frame-options|x-content-type-options'
+
+# 连续请求触发限流（默认 60 次/分钟/IP，超过返回 429）
+for i in $(seq 1 61); do curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/login; done | sort | uniq -c
+```
 
 ---
 
