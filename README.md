@@ -4,22 +4,24 @@
 [![GitHub](https://img.shields.io/badge/GitHub-fallen-leaves089%2Fspring--boot--security--filters-lightgrey?logo=github)](https://github.com/fallen-leaves089/spring-boot-security-filters)
 [![Build](https://img.shields.io/github/actions/workflow/status/fallen-leaves089/spring-boot-security-filters/ci.yml?branch=main&logo=github)](https://github.com/fallen-leaves089/spring-boot-security-filters/actions)
 
-Spring Boot 安全过滤器：限流 + 安全头，零代码接入。
+Spring Boot security filters: **rate limiting + security headers**, zero code integration.
 
 MIT License. Copyright (c) 2024 fallen-leaves089.
 
----
-
-## 功能
-
-| 过滤器 | 功能 | Order |
-|--------|------|-------|
-| `SecurityHeadersFilter` | 自动注入 8 类 HTTP 安全响应头（CSP / HSTS / X-Frame-Options 等），防御 XSS、点击劫持、MIME 嗅探 | 1 |
-| `RateLimitFilter` | 基于滑动窗口的 API 限流，按 IP + 路径模式独立计数，触发后返回 429 | 2 |
+[中文说明](README.zh-CN.md)
 
 ---
 
-## 依赖坐标
+## Features
+
+| Filter | Purpose | Order |
+|--------|---------|-------|
+| `SecurityHeadersFilter` | Automatically injects 8 HTTP security response headers (CSP / HSTS / X-Frame-Options, etc.) to protect against XSS, clickjacking, and MIME sniffing. | 1 |
+| `RateLimitFilter` | Sliding-window API rate limiting with independent counters by IP + path pattern. Returns 429 when the limit is exceeded. | 2 |
+
+---
+
+## Dependency coordinates
 
 ### Maven
 
@@ -37,13 +39,13 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 implementation 'io.github.fallenleaves089:spring-boot-security-filters:1.0.0'
 ```
 
-> 需要 Spring Boot 3.2.x + Java 17。
+> Requires Spring Boot 3.2.x and Java 17.
 
 ---
 
-## 快速开始
+## Quick start
 
-引入依赖后即可生效，默认配置开箱即用：
+The filters take effect after the dependency is added. The default configuration works out of the box:
 
 ```yaml
 # application.yml
@@ -60,116 +62,116 @@ security:
     csp-policy: "default-src 'self'"
 ```
 
-无需任何 Java 代码，启动项目即可看到安全响应头。
+No Java code is required. Start the application and the security headers will be present.
 
-启动项目后，可以用 curl 验证效果：
+Use curl to verify the behavior:
 
 ```bash
-# 查看注入的安全响应头
+# Inspect the injected security headers
 curl -sI http://localhost:8080/api/hello | grep -iE 'content-security-policy|x-frame-options|x-content-type-options'
 
-# 连续请求触发限流（默认 60 次/分钟/IP，超过返回 429）
+# Trigger rate limiting (default 60 requests/minute/IP; the next request returns 429)
 for i in $(seq 1 61); do curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/login; done | sort | uniq -c
 ```
 
 ---
 
-## 完整配置参考
+## Full configuration reference
 
 ```yaml
 security:
-  # ── API 限流 ──
+  # ── API rate limiting ──
   rate-limit:
-    # 是否启用，默认 true
+    # Whether rate limiting is enabled. Default: true.
     enabled: true
 
-    # 需要限流的路径模式（支持 * 通配符）
+    # Path patterns to rate limit (supports * wildcards).
     paths:
       - /api/login
       - /api/sms/*
       - /api/captcha
 
-    # 每个 IP 在时间窗口内的最大请求数，默认 60
+    # Maximum requests per IP within the time window. Default: 60.
     capacity: 60
 
-    # 时间窗口大小（秒），默认 60
+    # Time window size in seconds. Default: 60.
     window-seconds: 60
 
-    # 触发限流的 HTTP 状态码，默认 429
+    # HTTP status returned when the limit is triggered. Default: 429.
     http-status: 429
 
-    # 触发限流时的提示消息
+    # Message returned when the limit is triggered.
     message: "请求过于频繁，请稍后再试"
 
-  # ── HTTP 安全响应头 ──
+  # ── HTTP security headers ──
   security-headers:
-    # 是否启用，默认 true
+    # Whether security headers are enabled. Default: true.
     enabled: true
 
-    # Content-Security-Policy 策略值
+    # Content-Security-Policy value.
     csp-policy: "default-src 'self'; script-src 'self' cdn.example.com"
 
-    # 是否启用 HSTS（仅在 HTTPS 请求时生效）
+    # Whether HSTS is enabled. Only applies to HTTPS requests.
     hsts-enabled: true
 
-    # HSTS max-age（秒），默认 31536000（1 年）
+    # HSTS max-age in seconds. Default: 31536000 (1 year).
     hsts-max-age: 31536000
 
-    # 是否禁止 iframe 嵌入（防点击劫持）
+    # Whether to prevent iframe embedding (clickjacking protection).
     prevent-click-jacking: true
 ```
 
 ---
 
-## 注入的安全响应头
+## Injected security headers
 
-引入依赖后，每个 HTTP 响应将自动包含：
+After adding the dependency, every HTTP response automatically includes:
 
-| 响应头 | 默认值 |
-|--------|--------|
+| Header | Default value |
+|--------|---------------|
 | `X-Content-Type-Options` | `nosniff` |
 | `X-XSS-Protection` | `1; mode=block` |
-| `Content-Security-Policy` | 可配置 |
+| `Content-Security-Policy` | configurable |
 | `X-Download-Options` | `noopen` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=(self)` |
-| `X-Frame-Options` | `DENY`（可配置） |
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains`（仅 HTTPS） |
+| `X-Frame-Options` | `DENY` (configurable) |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` (HTTPS only) |
 
 ---
 
-## 单独关闭某个过滤器
+## Disable an individual filter
 
 ```yaml
-# 只关限流
+# Disable only rate limiting
 security.rate-limit.enabled=false
 
-# 只关安全响应头
+# Disable only security headers
 security.security-headers.enabled=false
 ```
 
 ---
 
-## 自定义限流逻辑
+## Custom rate-limiting logic
 
-如果你只需要安全响应头而不需要限流（或反之），只需设置对应的 `enabled: false` 即可。Filter 通过 `@ConditionalOnProperty` 条件装配，关闭后对应的 Filter Bean 不会被创建。
+If you only need security headers and not rate limiting (or vice versa), set the corresponding `enabled: false`. Filters are assembled with `@ConditionalOnProperty`, so a disabled filter bean is not created.
 
 ---
 
-## 架构说明
+## Architecture
 
 ```
 spring-boot-security-filters
-├── SecurityFiltersProperties      -- @ConfigurationProperties，统一管理所有配置
-├── SecurityHeadersFilter          -- Filter: 注入安全响应头
-├── RateLimitFilter                -- Filter: 滑动窗口 API 限流
-└── SecurityFiltersAutoConfiguration -- @AutoConfiguration，自动装配
+├── SecurityFiltersProperties      -- @ConfigurationProperties; manages all configuration
+├── SecurityHeadersFilter          -- Filter: injects security headers
+├── RateLimitFilter                -- Filter: sliding-window API rate limiting
+└── SecurityFiltersAutoConfiguration -- @AutoConfiguration; auto-configures the filters
 ```
 
-通过 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 机制自动加载，无需 `@ComponentScan`。
+Loaded automatically through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`; no `@ComponentScan` required.
 
 ---
 
-## GitHub About 建议
+## GitHub About
 
-`Spring Boot 安全过滤器：限流 + 安全头，零代码接入`
+`Spring Boot security filters: rate limiting + security headers, zero code integration`
