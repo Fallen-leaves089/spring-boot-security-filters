@@ -14,6 +14,8 @@ public class SecurityFiltersProperties {
 
     private final RateLimit rateLimit = new RateLimit();
     private final SecurityHeaders securityHeaders = new SecurityHeaders();
+    private final RealIp realIp = new RealIp();
+    private final Csrf csrf = new Csrf();
 
     public RateLimit getRateLimit() {
         return rateLimit;
@@ -21,6 +23,14 @@ public class SecurityFiltersProperties {
 
     public SecurityHeaders getSecurityHeaders() {
         return securityHeaders;
+    }
+
+    public RealIp getRealIp() {
+        return realIp;
+    }
+
+    public Csrf getCsrf() {
+        return csrf;
     }
 
     /**
@@ -157,6 +167,39 @@ public class SecurityFiltersProperties {
 
         public void setPreventClickJacking(boolean preventClickJacking) {
             this.preventClickJacking = preventClickJacking;
+        }
+    }
+
+    public static class RealIp {
+        private boolean enabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
+    public static class Csrf {
+        private boolean enabled = true;
+        private List<String> protectedPaths = new ArrayList<>(List.of("/admin"));
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public List<String> getProtectedPaths() {
+            return protectedPaths;
+        }
+
+        public void setProtectedPaths(List<String> protectedPaths) {
+            this.protectedPaths = protectedPaths;
         }
     }
 }

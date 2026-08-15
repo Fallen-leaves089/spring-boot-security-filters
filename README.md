@@ -4,7 +4,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-fallen-leaves089%2Fspring--boot--security--filters-lightgrey?logo=github)](https://github.com/fallen-leaves089/spring-boot-security-filters)
 [![Build](https://img.shields.io/github/actions/workflow/status/fallen-leaves089/spring-boot-security-filters/ci.yml?branch=main&logo=github)](https://github.com/fallen-leaves089/spring-boot-security-filters/actions)
 
-Spring Boot security filters: **rate limiting + security headers**, zero code integration.
+Spring Boot security filters: **rate limiting, security headers, trusted-proxy IP resolution, CSRF protection, and magic-byte validation**, zero code integration.
 
 MIT License. Copyright (c) 2024 fallen-leaves089.
 
@@ -18,6 +18,9 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 |--------|---------|-------|
 | `SecurityHeadersFilter` | Automatically injects 8 HTTP security response headers (CSP / HSTS / X-Frame-Options, etc.) to protect against XSS, clickjacking, and MIME sniffing. | 1 |
 | `RateLimitFilter` | Sliding-window API rate limiting with independent counters by IP + path pattern. Returns 429 when the limit is exceeded. | 2 |
+| `RealIpFilter` | Resolves the real client IP only when the direct remote address is a trusted private proxy, preventing forged `X-Forwarded-For`. | 1 |
+| `CsrfTokenFilter` | Session-bound CSRF tokens for configurable path prefixes, validating `X-CSRF-TOKEN` or `_csrf`. | 3 |
+| `MagicBytesValidator` | Pure utility that validates image/video magic bytes against the claimed extension. | utility |
 
 ---
 
@@ -60,6 +63,12 @@ security:
   security-headers:
     enabled: true
     csp-policy: "default-src 'self'"
+  real-ip:
+    enabled: true
+  csrf:
+    enabled: true
+    protected-paths:
+      - /admin
 ```
 
 No Java code is required. Start the application and the security headers will be present.
@@ -119,6 +128,20 @@ security:
 
     # Whether to prevent iframe embedding (clickjacking protection).
     prevent-click-jacking: true
+
+  # ---------- Trusted proxy real IP ----------
+  real-ip:
+    # Whether trusted-proxy IP resolution is enabled. Default: true.
+    enabled: true
+
+  # ---------- Session CSRF protection ----------
+  csrf:
+    # Whether CSRF protection is enabled. Default: true.
+    enabled: true
+
+    # Path prefixes that require CSRF tokens. Default: /admin.
+    protected-paths:
+      - /admin
 ```
 
 ---
@@ -148,6 +171,12 @@ security.rate-limit.enabled=false
 
 # Disable only security headers
 security.security-headers.enabled=false
+
+# Disable only trusted-proxy IP resolution
+security.real-ip.enabled=false
+
+# Disable only session CSRF protection
+security.csrf.enabled=false
 ```
 
 ---

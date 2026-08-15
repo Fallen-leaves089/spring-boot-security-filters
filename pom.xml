@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>spring-boot-security-filters</name>
-    <description>Ready-to-use Spring Boot security filter suite: API rate limiting and HTTP security headers</description>
+    <description>Ready-to-use Spring Boot security filter suite: rate limiting, security headers, trusted-proxy real IP, CSRF protection, and magic-byte validation</description>
     <url>https://github.com/fallen-leaves089/spring-boot-security-filters</url>
 
     <licenses>

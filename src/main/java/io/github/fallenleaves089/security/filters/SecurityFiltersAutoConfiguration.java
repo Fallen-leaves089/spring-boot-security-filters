@@ -32,6 +32,18 @@ public class SecurityFiltersAutoConfiguration {
         return new RateLimitFilter(properties);
     }
 
+    @Bean
+    @ConditionalOnProperty(prefix = "security.real-ip", name = "enabled", havingValue = "true", matchIfMissing = true)
+    public RealIpFilter realIpFilter() {
+        return new RealIpFilter();
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "security.csrf", name = "enabled", havingValue = "true", matchIfMissing = true)
+    public CsrfTokenFilter csrfTokenFilter(SecurityFiltersProperties properties) {
+        return new CsrfTokenFilter(properties.getCsrf().getProtectedPaths());
+    }
+
     /**
      * 注册 {@link SecurityHeadersFilter}。
      * 仅当 {@code security.security-headers.enabled} 为 true（默认）时生效。
