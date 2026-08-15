@@ -16,16 +16,28 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 |--------|------|-------|
 | `SecurityHeadersFilter` | 自动注入 8 类 HTTP 安全响应头（CSP / HSTS / X-Frame-Options 等），防御 XSS、点击劫持、MIME 嗅探 | 1 |
 | `RateLimitFilter` | 基于滑动窗口的 API 限流，按 IP + 路径模式独立计数，触发后返回 429 | 2 |
+| `RealIpFilter` | 仅当直连地址是可信内网代理时解析真实客户端 IP，避免伪造 `X-Forwarded-For` | 1 |
+| `CsrfTokenFilter` | 为可配置路径前缀提供 Session 级 CSRF Token 校验，支持 `X-CSRF-TOKEN` 或 `_csrf` | 3 |
+| `MagicBytesValidator` | 校验图片/视频文件魔数与声称扩展名是否一致 | utility |
 
 ---
 
 ## 依赖坐标
 
+本项目通过 [JitPack](https://jitpack.io) 发布，使用时先添加 JitPack 仓库。
+
 ### Maven
 
 ```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
 <dependency>
-    <groupId>io.github.fallenleaves089</groupId>
+    <groupId>com.github.fallen-leaves089</groupId>
     <artifactId>spring-boot-security-filters</artifactId>
     <version>1.0.0</version>
 </dependency>
@@ -34,7 +46,15 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 ### Gradle
 
 ```gradle
-implementation 'io.github.fallenleaves089:spring-boot-security-filters:1.0.0'
+dependencyResolutionManagement {
+    repositories {
+        maven("https://jitpack.io")
+    }
+}
+
+dependencies {
+    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.0.0")
+}
 ```
 
 > 需要 Spring Boot 3.2.x + Java 17。
@@ -58,6 +78,12 @@ security:
   security-headers:
     enabled: true
     csp-policy: "default-src 'self'"
+  real-ip:
+    enabled: true
+  csrf:
+    enabled: true
+    protected-paths:
+      - /admin
 ```
 
 无需任何 Java 代码，启动项目即可看到安全响应头。
@@ -146,6 +172,12 @@ security.rate-limit.enabled=false
 
 # 只关安全响应头
 security.security-headers.enabled=false
+
+# 只关可信代理真实 IP 解析
+security.real-ip.enabled=false
+
+# 只关 Session CSRF 防护
+security.csrf.enabled=false
 ```
 
 ---
@@ -163,10 +195,32 @@ spring-boot-security-filters
 ├── SecurityFiltersProperties      -- @ConfigurationProperties，统一管理所有配置
 ├── SecurityHeadersFilter          -- Filter: 注入安全响应头
 ├── RateLimitFilter                -- Filter: 滑动窗口 API 限流
+├── RealIpFilter                   -- Filter: 可信代理真实 IP 解析
+├── CsrfTokenFilter                -- Filter: Session 级 CSRF 校验
+├── MagicBytesValidator            -- 工具类: 图片/视频魔数校验
 └── SecurityFiltersAutoConfiguration -- @AutoConfiguration，自动装配
 ```
 
 通过 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 机制自动加载，无需 `@ComponentScan`。
+
+---
+
+## 发布
+
+JitPack 会根据 Git tag 自动构建发布。
+
+```bash
+git tag 1.0.0
+git push origin 1.0.0
+```
+
+随后可使用：
+
+```text
+https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.0.0
+```
+
+发布到 Maven Central 需要 OSSRH 凭据、签名制品以及 source/javadoc jar。
 
 ---
 

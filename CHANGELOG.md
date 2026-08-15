@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SECURITY.md` security policy
 - `CODE_OF_CONDUCT.md` contributor covenant
 - Maven wrapper for reproducible builds
+- `RealIpFilter`, `CsrfTokenFilter`, and `MagicBytesValidator`
+- JitPack publishing instructions and dependency coordinates
 
 ## [1.0.0] - 2026-08-12
 
