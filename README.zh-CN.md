@@ -1,7 +1,6 @@
 # spring-boot-security-filters
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-fallen-leaves089%2Fspring--boot--security--filters-lightgrey?logo=github)](https://github.com/fallen-leaves089/spring-boot-security-filters)
 [![Build](https://img.shields.io/github/actions/workflow/status/fallen-leaves089/spring-boot-security-filters/ci.yml?branch=main&logo=github)](https://github.com/fallen-leaves089/spring-boot-security-filters/actions)
 
 Spring Boot 安全过滤器：限流 + 安全头，零代码接入。
