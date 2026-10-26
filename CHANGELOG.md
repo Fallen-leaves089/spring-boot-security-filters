@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `RealIpFilter`, `CsrfTokenFilter`, and `MagicBytesValidator`
 - JitPack publishing instructions and dependency coordinates
 
+### Changed
+
+- README adds a 30-second overview, shortest demo, scope limits, and a link to the aggregator starter
+- Release tags are documented as `v1.0.0`; the JitPack coordinate remains `1.0.0`
+
 ## [1.0.0] - 2026-08-12
 
 ### Added

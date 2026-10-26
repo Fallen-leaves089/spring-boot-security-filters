@@ -7,6 +7,35 @@ Spring Boot 安全过滤器：限流 + 安全头，零代码接入。
 
 MIT License. Copyright (c) 2024 fallen-leaves089.
 
+> 需要 JWT 鉴权一起用？使用
+> [`spring-boot-security-starter`](https://github.com/fallen-leaves089/spring-boot-security-starter)。
+
+## 30 秒看懂
+
+- **解决什么**：给 Spring MVC 项目加一层可复用的安全过滤，不用自己逐个实现 `Filter`。
+- **你能得到**：安全响应头、滑动窗口限流、可信代理真实 IP、Session CSRF、文件魔数校验。
+- **适合**：Spring Boot 3.2.x / Java 17 的 Servlet 应用，需要快速建立基础防护。
+- **不适合**：替代 WAF/API 网关。限流是单 JVM 内存计数，CSRF 基于 Session，`MagicBytesValidator` 需要在上传处理中手动调用。
+
+## 最短演示
+
+```yaml
+security:
+  rate-limit:
+    paths:
+      - /api/login
+    capacity: 60
+    window-seconds: 60
+```
+
+加依赖、启动应用后检查响应：
+
+```bash
+curl -I http://localhost:8080/api/login
+```
+
+响应会带上安全响应头；同一 IP 的第 61 次请求返回 `429`。完整配置见[快速开始](#快速开始)。
+
 ---
 
 ## 功能
@@ -18,6 +47,13 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 | `RealIpFilter` | 仅当直连地址是可信内网代理时解析真实客户端 IP，避免伪造 `X-Forwarded-For` | 1 |
 | `CsrfTokenFilter` | 为可配置路径前缀提供 Session 级 CSRF Token 校验，支持 `X-CSRF-TOKEN` 或 `_csrf` | 3 |
 | `MagicBytesValidator` | 校验图片/视频文件魔数与声称扩展名是否一致 | utility |
+
+## 边界与限制
+
+- `RateLimitFilter` 计数存在 JVM 内存中；多实例部署请使用共享存储或网关限流。
+- `CsrfTokenFilter` 基于 Session，不适用于完全无状态的 Token API。
+- `RealIpFilter` 只信任回环/私有代理地址；必须确保网络边界不允许客户端直接伪造 `X-Forwarded-For` 访问应用。
+- `MagicBytesValidator` 是工具类，需要在文件上传处理中显式调用，不会自动扫描上传文件。
 
 ---
 
@@ -206,11 +242,11 @@ spring-boot-security-filters
 
 ## 发布
 
-JitPack 会根据 Git tag 自动构建发布。
+JitPack 会根据 Git tag 自动构建发布。Git tag 使用 `v1.0.0`，上面的依赖坐标仍使用 `1.0.0`。
 
 ```bash
-git tag 1.0.0
-git push origin 1.0.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 随后可使用：
@@ -219,10 +255,10 @@ git push origin 1.0.0
 https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.0.0
 ```
 
-发布到 Maven Central 需要 OSSRH 凭据、签名制品以及 source/javadoc jar。
+发布到 Maven Central 需要仓库凭据、签名制品以及 source/javadoc jar。
 
 ---
 
 ## GitHub About 建议
 
-`Spring Boot 安全过滤器：限流 + 安全头，零代码接入`
+`Spring Boot 安全过滤器 | 限流 | 安全响应头 | 可信代理 IP | CSRF | 文件魔数校验`
