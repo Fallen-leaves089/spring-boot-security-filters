@@ -9,6 +9,35 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 
 [中文说明](README.zh-CN.md)
 
+> Need JWT authentication too? Use
+> [`spring-boot-security-starter`](https://github.com/fallen-leaves089/spring-boot-security-starter).
+
+## 30-second overview
+
+- **Problem solved:** adds reusable security filters to a Spring MVC app without writing each `Filter` yourself.
+- **What you get:** security headers, sliding-window rate limiting, trusted-proxy real IP resolution, session CSRF tokens, and magic-byte validation.
+- **Use it when:** you want a small server-side baseline for a Spring Boot 3.2.x / Java 17 servlet app.
+- **Not for:** replacing a WAF/API gateway. Rate limiting is per JVM, CSRF is session-based, and `MagicBytesValidator` is a utility you call from upload handling.
+
+## Shortest demo
+
+```yaml
+security:
+  rate-limit:
+    paths:
+      - /api/login
+    capacity: 60
+    window-seconds: 60
+```
+
+Add the dependency, start the app, and inspect a response:
+
+```bash
+curl -I http://localhost:8080/api/login
+```
+
+The response includes the security headers; the 61st request from the same IP returns `429`. See [Quick start](#quick-start) for the full configuration.
+
 ---
 
 ## Features
@@ -20,6 +49,13 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 | `RealIpFilter` | Resolves the real client IP only when the direct remote address is a trusted private proxy, preventing forged `X-Forwarded-For`. | 1 |
 | `CsrfTokenFilter` | Session-bound CSRF tokens for configurable path prefixes, validating `X-CSRF-TOKEN` or `_csrf`. | 3 |
 | `MagicBytesValidator` | Pure utility that validates image/video magic bytes against the claimed extension. | utility |
+
+## Scope and limits
+
+- `RateLimitFilter` stores counters in JVM memory. For multiple instances, use a shared store or a gateway.
+- `CsrfTokenFilter` is session-bound. It is not a replacement for token-based CSRF defenses in stateless APIs.
+- `RealIpFilter` only trusts loopback/private proxy addresses. Make sure the network boundary prevents clients from reaching the app directly with a forged `X-Forwarded-For`.
+- `MagicBytesValidator` is a utility; call it when handling uploads. It does not scan files automatically.
 
 ---
 
@@ -222,11 +258,11 @@ Loaded automatically through `META-INF/spring/org.springframework.boot.autoconfi
 
 ## Releasing
 
-JitPack builds a release automatically from a Git tag.
+JitPack builds a release automatically from a Git tag. Use the `v` prefix for the tag; the dependency coordinate above remains `1.0.0`.
 
 ```bash
-git tag 1.0.0
-git push origin 1.0.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 Then use:
@@ -235,10 +271,10 @@ Then use:
 https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.0.0
 ```
 
-Maven Central publishing requires OSSRH credentials, signed artifacts, and source/javadoc jars.
+Publishing to Maven Central requires repository credentials, signed artifacts, and source/javadoc jars.
 
 ---
 
 ## GitHub About
 
-`Spring Boot security filters: rate limiting + security headers, zero code integration`
+`Spring Boot security filters | Rate limiting | Security headers | Trusted-proxy IP | CSRF | Magic-byte validation`
