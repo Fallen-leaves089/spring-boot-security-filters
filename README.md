@@ -15,7 +15,7 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 ## 30-second overview
 
 - **Problem solved:** adds reusable security filters to a Spring MVC app without writing each `Filter` yourself.
-- **What you get:** security headers, sliding-window rate limiting, trusted-proxy real IP resolution, session CSRF tokens, and magic-byte validation.
+- **What you get:** security headers, fixed-window rate limiting, trusted-proxy real IP resolution, session CSRF tokens, and magic-byte validation.
 - **Use it when:** you want a small server-side baseline for a Spring Boot 3.2.x / Java 17 servlet app.
 - **Not for:** replacing a WAF/API gateway. Rate limiting is per JVM, CSRF is session-based, and `MagicBytesValidator` is a utility you call from upload handling.
 
@@ -45,17 +45,24 @@ The response includes the security headers; the 61st request from the same IP re
 | Filter | Purpose | Order |
 |--------|---------|-------|
 | `SecurityHeadersFilter` | Automatically injects 8 HTTP security response headers (CSP / HSTS / X-Frame-Options, etc.) to protect against XSS, clickjacking, and MIME sniffing. | 1 |
-| `RateLimitFilter` | Sliding-window API rate limiting with independent counters by IP + path pattern. Returns 429 when the limit is exceeded. | 2 |
+| `RateLimitFilter` | Fixed-window API rate limiting with independent counters by IP + path pattern. Returns 429 when the limit is exceeded. | 2 |
 | `RealIpFilter` | Resolves the real client IP only when the direct remote address is a trusted private proxy, preventing forged `X-Forwarded-For`. | 1 |
 | `CsrfTokenFilter` | Session-bound CSRF tokens for configurable path prefixes, validating `X-CSRF-TOKEN` or `_csrf`. | 3 |
 | `MagicBytesValidator` | Pure utility that validates image/video magic bytes against the claimed extension. | utility |
 
 ## Scope and limits
 
-- `RateLimitFilter` stores counters in JVM memory. For multiple instances, use a shared store or a gateway.
+- `RateLimitFilter` stores counters in JVM memory and evicts expired windows lazily. For multiple instances, use a shared store or a gateway.
+- `RateLimitFilter` resolves the client IP through the same trusted-proxy rules as `RealIpFilter`; a direct client cannot bypass the limit by setting `X-Forwarded-For`.
 - `CsrfTokenFilter` is session-bound. It is not a replacement for token-based CSRF defenses in stateless APIs.
 - `RealIpFilter` only trusts loopback/private proxy addresses. Make sure the network boundary prevents clients from reaching the app directly with a forged `X-Forwarded-For`.
-- `MagicBytesValidator` is a utility; call it when handling uploads. It does not scan files automatically.
+- `MagicBytesValidator` is a utility; call it when handling uploads. It does not scan files automatically, and `matches` consumes up to 12 bytes from the supplied stream without resetting it.
+
+---
+
+## CSRF token flow
+
+`CsrfTokenFilter` protects the configured path prefixes (default: `/admin`). On a safe request (`GET`, `HEAD`, `OPTIONS`) it creates a session if needed, reuses the token for that session, exposes it as the `X-CSRF-TOKEN` response header and the `CSRF_TOKEN` request attribute, and marks the response `Cache-Control: no-store`. Unsafe requests must send the same value in `X-CSRF-TOKEN` or `_csrf`; a protected request without a session is rejected with `403`. The token is not rotated on every request.
 
 ---
 
@@ -76,7 +83,7 @@ This project is published through [JitPack](https://jitpack.io). Add the JitPack
 <dependency>
     <groupId>com.github.fallen-leaves089</groupId>
     <artifactId>spring-boot-security-filters</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -90,7 +97,7 @@ dependencyResolutionManagement {
 }
 
 dependencies {
-    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.0.0")
+    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.1.0")
 }
 ```
 
@@ -245,7 +252,7 @@ If you only need security headers and not rate limiting (or vice versa), set the
 spring-boot-security-filters
 ├── SecurityFiltersProperties      -- @ConfigurationProperties; manages all configuration
 ├── SecurityHeadersFilter          -- Filter: injects security headers
-├── RateLimitFilter                -- Filter: sliding-window API rate limiting
+├── RateLimitFilter                -- Filter: fixed-window API rate limiting
 ├── RealIpFilter                   -- Filter: trusted-proxy real IP resolution
 ├── CsrfTokenFilter                -- Filter: session-bound CSRF validation
 ├── MagicBytesValidator            -- Utility: image/video magic-byte validation
@@ -258,17 +265,17 @@ Loaded automatically through `META-INF/spring/org.springframework.boot.autoconfi
 
 ## Releasing
 
-JitPack builds a release automatically from a Git tag. Use the `v` prefix for the tag; the dependency coordinate above remains `1.0.0`.
+JitPack builds a release automatically from a Git tag. Use the `v` prefix for the tag; the dependency coordinate above remains `1.1.0`.
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 Then use:
 
 ```text
-https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.0.0
+https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.1.0
 ```
 
 Publishing to Maven Central requires repository credentials, signed artifacts, and source/javadoc jars.

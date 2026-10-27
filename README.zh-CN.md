@@ -13,7 +13,7 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 ## 30 秒看懂
 
 - **解决什么**：给 Spring MVC 项目加一层可复用的安全过滤，不用自己逐个实现 `Filter`。
-- **你能得到**：安全响应头、滑动窗口限流、可信代理真实 IP、Session CSRF、文件魔数校验。
+- **你能得到**：安全响应头、固定窗口限流、可信代理真实 IP、Session CSRF、文件魔数校验。
 - **适合**：Spring Boot 3.2.x / Java 17 的 Servlet 应用，需要快速建立基础防护。
 - **不适合**：替代 WAF/API 网关。限流是单 JVM 内存计数，CSRF 基于 Session，`MagicBytesValidator` 需要在上传处理中手动调用。
 
@@ -43,17 +43,24 @@ curl -I http://localhost:8080/api/login
 | 过滤器 | 功能 | Order |
 |--------|------|-------|
 | `SecurityHeadersFilter` | 自动注入 8 类 HTTP 安全响应头（CSP / HSTS / X-Frame-Options 等），防御 XSS、点击劫持、MIME 嗅探 | 1 |
-| `RateLimitFilter` | 基于滑动窗口的 API 限流，按 IP + 路径模式独立计数，触发后返回 429 | 2 |
+| `RateLimitFilter` | 基于固定窗口的 API 限流，按 IP + 路径模式独立计数，触发后返回 429 | 2 |
 | `RealIpFilter` | 仅当直连地址是可信内网代理时解析真实客户端 IP，避免伪造 `X-Forwarded-For` | 1 |
 | `CsrfTokenFilter` | 为可配置路径前缀提供 Session 级 CSRF Token 校验，支持 `X-CSRF-TOKEN` 或 `_csrf` | 3 |
 | `MagicBytesValidator` | 校验图片/视频文件魔数与声称扩展名是否一致 | utility |
 
 ## 边界与限制
 
-- `RateLimitFilter` 计数存在 JVM 内存中；多实例部署请使用共享存储或网关限流。
+- `RateLimitFilter` 计数存在 JVM 内存中，并会惰性清理过期窗口；多实例部署请使用共享存储或网关限流。
+- `RateLimitFilter` 与 `RealIpFilter` 使用相同的可信代理规则解析客户端 IP；直连客户端无法通过伪造 `X-Forwarded-For` 绕过限流。
 - `CsrfTokenFilter` 基于 Session，不适用于完全无状态的 Token API。
 - `RealIpFilter` 只信任回环/私有代理地址；必须确保网络边界不允许客户端直接伪造 `X-Forwarded-For` 访问应用。
-- `MagicBytesValidator` 是工具类，需要在文件上传处理中显式调用，不会自动扫描上传文件。
+- `MagicBytesValidator` 是工具类，需要在文件上传处理中显式调用，不会自动扫描上传文件；`matches` 会从传入的流读取最多 12 字节且不会自动重置流位置。
+
+---
+
+## CSRF Token 流程
+
+`CsrfTokenFilter` 保护配置的路径前缀（默认 `/admin`）。安全请求（`GET`、`HEAD`、`OPTIONS`）会按需创建 Session，同一 Session 复用同一个 Token，并通过 `X-CSRF-TOKEN` 响应头和 `CSRF_TOKEN` request attribute 暴露；响应会带 `Cache-Control: no-store`。非安全请求必须在 `X-CSRF-TOKEN` 或 `_csrf` 中带上同一个值；受保护请求如果没有 Session 会直接返回 `403`。Token 不会在每次请求时轮换。
 
 ---
 
@@ -74,7 +81,7 @@ curl -I http://localhost:8080/api/login
 <dependency>
     <groupId>com.github.fallen-leaves089</groupId>
     <artifactId>spring-boot-security-filters</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -88,7 +95,7 @@ dependencyResolutionManagement {
 }
 
 dependencies {
-    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.0.0")
+    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.1.0")
 }
 ```
 
@@ -229,7 +236,7 @@ security.csrf.enabled=false
 spring-boot-security-filters
 ├── SecurityFiltersProperties      -- @ConfigurationProperties，统一管理所有配置
 ├── SecurityHeadersFilter          -- Filter: 注入安全响应头
-├── RateLimitFilter                -- Filter: 滑动窗口 API 限流
+├── RateLimitFilter                -- Filter: 固定窗口 API 限流
 ├── RealIpFilter                   -- Filter: 可信代理真实 IP 解析
 ├── CsrfTokenFilter                -- Filter: Session 级 CSRF 校验
 ├── MagicBytesValidator            -- 工具类: 图片/视频魔数校验
@@ -242,17 +249,17 @@ spring-boot-security-filters
 
 ## 发布
 
-JitPack 会根据 Git tag 自动构建发布。Git tag 使用 `v1.0.0`，上面的依赖坐标仍使用 `1.0.0`。
+JitPack 会根据 Git tag 自动构建发布。Git tag 使用 `v1.1.0`，上面的依赖坐标仍使用 `1.1.0`。
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 随后可使用：
 
 ```text
-https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.0.0
+https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.1.0
 ```
 
 发布到 Maven Central 需要仓库凭据、签名制品以及 source/javadoc jar。

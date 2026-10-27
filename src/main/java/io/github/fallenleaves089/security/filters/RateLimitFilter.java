@@ -10,9 +10,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * API 限流过滤器 —— 基于滑动窗口算法，每个 IP + 路径模式的请求独立计数。
+ * API 限流过滤器 —— 基于固定窗口算法，每个 IP + 路径模式的请求独立计数。
  * <p>
  * 与 {@link SecurityFiltersProperties.RateLimit} 自动绑定，支持以下配置：
  * <ul>
@@ -30,6 +31,9 @@ public class RateLimitFilter implements Filter {
     /** key = "pathPattern:clientIp", value = 计数条目 */
     private final ConcurrentHashMap<String, RateLimitEntry> rateLimitMap = new ConcurrentHashMap<>();
 
+    /** 下一次清理过期计数的时间戳，避免 Map 随独立 IP 数量无限增长。 */
+    private final AtomicLong nextCleanupAt = new AtomicLong(0);
+
     public RateLimitFilter(SecurityFiltersProperties properties) {
         this.config = properties.getRateLimit();
     }
@@ -46,7 +50,8 @@ public class RateLimitFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
         String path = req.getRequestURI();
-        String clientIp = getClientIp(req);
+        // 只信任来自回环/私有代理的 X-Forwarded-For，避免客户端伪造 IP 绕过限流。
+        String clientIp = RealIpFilter.resolve(req);
 
         // 检查请求路径是否命中限流模式
         String matchedPattern = matchPattern(path, config.getPaths());
@@ -74,6 +79,7 @@ public class RateLimitFilter implements Filter {
      */
     private boolean isRateLimited(String key, int maxRequests, long windowMs) {
         long now = System.currentTimeMillis();
+        cleanupExpiredEntries(now, windowMs);
         RateLimitEntry entry = rateLimitMap.compute(key, (k, v) -> {
             if (v == null || now - v.startTime > windowMs) {
                 return new RateLimitEntry(now, 1);
@@ -82,6 +88,25 @@ public class RateLimitFilter implements Filter {
             return v;
         });
         return entry.count > maxRequests;
+    }
+
+    /**
+     * 每个窗口最多清理一次，删除已经过期的计数条目。
+     * 这样 Map 的大小只与窗口内出现的独立 IP 数量相关，而不是进程生命周期内的总量。
+     */
+    private void cleanupExpiredEntries(long now, long windowMs) {
+        long next = nextCleanupAt.get();
+        if (now < next) {
+            return;
+        }
+        if (nextCleanupAt.compareAndSet(next, now + windowMs)) {
+            rateLimitMap.entrySet().removeIf(entry -> now - entry.getValue().startTime > windowMs);
+        }
+    }
+
+    /** 仅供测试观察内部计数规模。 */
+    int trackedKeyCount() {
+        return rateLimitMap.size();
     }
 
     /**
@@ -100,17 +125,6 @@ public class RateLimitFilter implements Filter {
             }
         }
         return null;
-    }
-
-    /** 获取客户端真实 IP（优先从 X-Forwarded-For 取） */
-    private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty()) {
-            ip = request.getRemoteAddr();
-        } else {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
     }
 
     /** 内部计数条目 */

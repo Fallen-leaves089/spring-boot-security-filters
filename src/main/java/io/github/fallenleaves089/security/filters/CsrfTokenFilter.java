@@ -11,6 +11,8 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.core.annotation.Order;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
@@ -46,14 +48,22 @@ public class CsrfTokenFilter implements Filter {
         String method = req.getMethod().toUpperCase();
         if ("GET".equals(method) || "HEAD".equals(method) || "OPTIONS".equals(method)) {
             HttpSession session = req.getSession(true);
-            session.setAttribute(CSRF_TOKEN_ATTR, generateToken());
+            String token = (String) session.getAttribute(CSRF_TOKEN_ATTR);
+            if (token == null) {
+                token = generateToken();
+                session.setAttribute(CSRF_TOKEN_ATTR, token);
+            }
+            req.setAttribute(CSRF_TOKEN_ATTR, token);
+            resp.setHeader(CSRF_HEADER, token);
+            // The token is per-session data; do not let shared caches store it.
+            resp.setHeader("Cache-Control", "no-store");
             chain.doFilter(request, response);
             return;
         }
 
         HttpSession session = req.getSession(false);
         if (session == null) {
-            chain.doFilter(request, response);
+            resp.sendError(403, "CSRF session missing");
             return;
         }
 
@@ -67,12 +77,12 @@ public class CsrfTokenFilter implements Filter {
         if (requestToken == null || requestToken.isBlank()) {
             requestToken = req.getParameter(CSRF_PARAM);
         }
-        if (requestToken == null || !sessionToken.equals(requestToken)) {
+        if (requestToken == null || !constantTimeEquals(sessionToken, requestToken)) {
             resp.sendError(403, "Invalid CSRF token");
             return;
         }
 
-        session.setAttribute(CSRF_TOKEN_ATTR, generateToken());
+        req.setAttribute(CSRF_TOKEN_ATTR, sessionToken);
         chain.doFilter(request, response);
     }
 
@@ -92,5 +102,11 @@ public class CsrfTokenFilter implements Filter {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private static boolean constantTimeEquals(String expected, String actual) {
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.UTF_8),
+                actual.getBytes(StandardCharsets.UTF_8));
     }
 }
