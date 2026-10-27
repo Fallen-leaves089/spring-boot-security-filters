@@ -7,6 +7,10 @@ import java.util.Set;
 
 /**
  * Validates file signatures (magic bytes) against common image/video extensions.
+ *
+ * <p>{@link #matches(String, InputStream)} reads up to 12 bytes from the supplied stream and
+ * does not reset it. Pass a fresh stream positioned at the start of the file, or call
+ * {@code mark}/{@code reset} on a buffered stream before validating.
  */
 public final class MagicBytesValidator {
 

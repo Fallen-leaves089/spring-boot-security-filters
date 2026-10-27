@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-27
+
 ### Added
 
 - `SECURITY.md` security policy
@@ -15,16 +17,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `RealIpFilter`, `CsrfTokenFilter`, and `MagicBytesValidator`
 - JitPack publishing instructions and dependency coordinates
 
+### Security
+
+- Rate limiting now resolves the client IP through the same trusted-proxy rules as `RealIpFilter`, preventing direct clients from bypassing limits with a forged `X-Forwarded-For`.
+- CSRF tokens are compared in constant time.
+
+### Fixed
+
+- `RateLimitFilter` evicts expired counters instead of growing the in-memory map for the lifetime of the process.
+- `CsrfTokenFilter` reuses one token per session instead of rotating it on every safe request. Safe responses expose the token through `X-CSRF-TOKEN` and the `CSRF_TOKEN` request attribute; protected requests without a session are rejected with `403`.
+
 ### Changed
 
 - README adds a 30-second overview, shortest demo, scope limits, and a link to the aggregator starter
-- Release tags are documented as `v1.0.0`; the JitPack coordinate remains `1.0.0`
+- Rate limiting is documented as fixed-window rather than sliding-window.
+- `MagicBytesValidator` documents that `matches` consumes up to 12 bytes from the supplied stream without resetting it.
 
 ## [1.0.0] - 2026-08-12
 
 ### Added
 
 - Security headers filter: CSP / HSTS / X-Frame-Options / X-Content-Type-Options (8 headers)
-- IP-based sliding-window rate limiting: `RateLimitFilter` with 429 responses
+- IP-based rate limiting: `RateLimitFilter` with 429 responses
 - Configurable via `security.rate-limit.*` / `security.security-headers.*`
 - Unit tests for `SecurityHeadersFilter` and `RateLimitFilter`
