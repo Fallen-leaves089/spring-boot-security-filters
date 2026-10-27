@@ -62,7 +62,7 @@ The response includes the security headers; the 61st request from the same IP re
 
 ## CSRF token flow
 
-`CsrfTokenFilter` protects the configured path prefixes (default: `/admin`). On a safe request (`GET`, `HEAD`, `OPTIONS`) it creates a session if needed, reuses the token for that session, exposes it as the `X-CSRF-TOKEN` response header and the `CSRF_TOKEN` request attribute, and marks the response `Cache-Control: no-store`. Unsafe requests must send the same value in `X-CSRF-TOKEN` or `_csrf`; a protected request without a session is rejected with `403`. The token is not rotated on every request.
+`CsrfTokenFilter` protects the configured path prefixes (default: `/admin`). A prefix matches on a path-segment boundary, so `/admin` covers `/admin/users` but not `/administrator`; entries containing `*` are treated as globs. Matching uses the application-relative path, so `server.servlet.context-path` does not need to be repeated in the configuration. On a safe request (`GET`, `HEAD`, `OPTIONS`) it creates a session if needed, reuses the token for that session, exposes it as the `X-CSRF-TOKEN` response header and the `CSRF_TOKEN` request attribute, and marks the response `Cache-Control: no-store`. Unsafe requests must send the same value in `X-CSRF-TOKEN` or `_csrf`; a protected request without a session is rejected with `403`. The token is not rotated on every request.
 
 ---
 
@@ -83,7 +83,7 @@ This project is published through [JitPack](https://jitpack.io). Add the JitPack
 <dependency>
     <groupId>com.github.fallen-leaves089</groupId>
     <artifactId>spring-boot-security-filters</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -97,7 +97,7 @@ dependencyResolutionManagement {
 }
 
 dependencies {
-    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.1.0")
+    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.2.0")
 }
 ```
 
@@ -198,7 +198,8 @@ security:
     # Whether CSRF protection is enabled. Default: true.
     enabled: true
 
-    # Path prefixes that require CSRF tokens. Default: /admin.
+    # Path prefixes that require CSRF tokens. Prefixes match on segment
+    # boundaries; entries containing * are globs. Default: /admin.
     protected-paths:
       - /admin
 ```
@@ -265,17 +266,17 @@ Loaded automatically through `META-INF/spring/org.springframework.boot.autoconfi
 
 ## Releasing
 
-JitPack builds a release automatically from a Git tag. Use the `v` prefix for the tag; the dependency coordinate above remains `1.1.0`.
+JitPack builds a release automatically from a Git tag. Use the `v` prefix for the tag; the dependency coordinate above remains `1.2.0`.
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 Then use:
 
 ```text
-https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.1.0
+https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.2.0
 ```
 
 Publishing to Maven Central requires repository credentials, signed artifacts, and source/javadoc jars.

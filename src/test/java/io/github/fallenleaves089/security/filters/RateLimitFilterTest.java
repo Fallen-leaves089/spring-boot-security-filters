@@ -50,6 +50,42 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void shouldTreatRegexCharactersInPatternLiterally() throws Exception {
+        SecurityFiltersProperties properties = new SecurityFiltersProperties();
+        properties.getRateLimit().setPaths(List.of("/api/a+b"));
+        properties.getRateLimit().setCapacity(1);
+        RateLimitFilter filter = new RateLimitFilter(properties);
+
+        for (int i = 0; i < 2; i++) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/a+b");
+            request.setRemoteAddr("1.2.3.4");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, new MockFilterChain());
+            assertEquals(i == 0 ? 200 : 429, response.getStatus());
+        }
+    }
+
+    @Test
+    void shouldMatchPathWithoutContextPrefix() throws Exception {
+        SecurityFiltersProperties properties = new SecurityFiltersProperties();
+        properties.getRateLimit().setPaths(List.of("/api/login"));
+        properties.getRateLimit().setCapacity(1);
+        RateLimitFilter filter = new RateLimitFilter(properties);
+
+        for (int i = 0; i < 2; i++) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/app/api/login");
+            request.setContextPath("/app");
+            request.setRemoteAddr("1.2.3.4");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, new MockFilterChain());
+            assertEquals(i == 0 ? 200 : 429, response.getStatus());
+            if (i == 1) {
+                assertEquals("60", response.getHeader("Retry-After"));
+            }
+        }
+    }
+
+    @Test
     void shouldNotRateLimitUnmatchedPath() throws Exception {
         SecurityFiltersProperties properties = new SecurityFiltersProperties();
         properties.getRateLimit().setPaths(List.of("/api/login"));

@@ -6,7 +6,7 @@
 
     <groupId>com.github.fallen-leaves089</groupId>
     <artifactId>spring-boot-security-filters</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <packaging>jar</packaging>
 
     <name>spring-boot-security-filters</name>

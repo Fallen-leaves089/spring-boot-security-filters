@@ -60,7 +60,7 @@ curl -I http://localhost:8080/api/login
 
 ## CSRF Token 流程
 
-`CsrfTokenFilter` 保护配置的路径前缀（默认 `/admin`）。安全请求（`GET`、`HEAD`、`OPTIONS`）会按需创建 Session，同一 Session 复用同一个 Token，并通过 `X-CSRF-TOKEN` 响应头和 `CSRF_TOKEN` request attribute 暴露；响应会带 `Cache-Control: no-store`。非安全请求必须在 `X-CSRF-TOKEN` 或 `_csrf` 中带上同一个值；受保护请求如果没有 Session 会直接返回 `403`。Token 不会在每次请求时轮换。
+`CsrfTokenFilter` 保护配置的路径前缀（默认 `/admin`）。前缀按路径段边界匹配，因此 `/admin` 覆盖 `/admin/users`，但不会覆盖 `/administrator`；包含 `*` 的条目按 glob 处理。匹配使用应用内相对路径，配置中不需要重复 `server.servlet.context-path`。安全请求（`GET`、`HEAD`、`OPTIONS`）会按需创建 Session，同一 Session 复用同一个 Token，并通过 `X-CSRF-TOKEN` 响应头和 `CSRF_TOKEN` request attribute 暴露；响应会带 `Cache-Control: no-store`。非安全请求必须在 `X-CSRF-TOKEN` 或 `_csrf` 中带上同一个值；受保护请求如果没有 Session 会直接返回 `403`。Token 不会在每次请求时轮换。
 
 ---
 
@@ -81,7 +81,7 @@ curl -I http://localhost:8080/api/login
 <dependency>
     <groupId>com.github.fallen-leaves089</groupId>
     <artifactId>spring-boot-security-filters</artifactId>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -95,7 +95,7 @@ dependencyResolutionManagement {
 }
 
 dependencies {
-    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.1.0")
+    implementation("com.github.fallen-leaves089:spring-boot-security-filters:1.2.0")
 }
 ```
 
@@ -249,17 +249,17 @@ spring-boot-security-filters
 
 ## 发布
 
-JitPack 会根据 Git tag 自动构建发布。Git tag 使用 `v1.1.0`，上面的依赖坐标仍使用 `1.1.0`。
+JitPack 会根据 Git tag 自动构建发布。Git tag 使用 `v1.2.0`，上面的依赖坐标仍使用 `1.2.0`。
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+git tag v1.2.0
+git push origin v1.2.0
 ```
 
 随后可使用：
 
 ```text
-https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.1.0
+https://jitpack.io/#fallen-leaves089/spring-boot-security-filters/1.2.0
 ```
 
 发布到 Maven Central 需要仓库凭据、签名制品以及 source/javadoc jar。
