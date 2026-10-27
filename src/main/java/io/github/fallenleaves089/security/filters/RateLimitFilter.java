@@ -7,7 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.annotation.Order;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,6 +26,7 @@ public class RateLimitFilter implements Filter {
 
     private final SecurityFiltersProperties.RateLimit config;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final PathMatcher pathMatcher;
 
     /** key = "pathPattern:clientIp", value = 计数条目 */
     private final ConcurrentHashMap<String, RateLimitEntry> rateLimitMap = new ConcurrentHashMap<>();
@@ -36,6 +36,13 @@ public class RateLimitFilter implements Filter {
 
     public RateLimitFilter(SecurityFiltersProperties properties) {
         this.config = properties.getRateLimit();
+        this.pathMatcher = new PathMatcher(this.config.getPaths());
+        if (this.config.getCapacity() < 1) {
+            throw new IllegalArgumentException("security.rate-limit.capacity must be at least 1");
+        }
+        if (this.config.getWindowSeconds() < 1) {
+            throw new IllegalArgumentException("security.rate-limit.window-seconds must be at least 1");
+        }
     }
 
     @Override
@@ -49,12 +56,12 @@ public class RateLimitFilter implements Filter {
 
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
-        String path = req.getRequestURI();
+        String path = PathMatcher.requestPath(req);
         // 只信任来自回环/私有代理的 X-Forwarded-For，避免客户端伪造 IP 绕过限流。
         String clientIp = RealIpFilter.resolve(req);
 
         // 检查请求路径是否命中限流模式
-        String matchedPattern = matchPattern(path, config.getPaths());
+        String matchedPattern = pathMatcher.match(path);
         if (matchedPattern == null) {
             chain.doFilter(request, response);
             return;
@@ -66,6 +73,7 @@ public class RateLimitFilter implements Filter {
         if (isRateLimited(key, config.getCapacity(), windowMs)) {
             res.setStatus(config.getHttpStatus());
             res.setContentType("application/json;charset=utf-8");
+            res.setHeader("Retry-After", Long.toString(config.getWindowSeconds()));
             res.getWriter().write(objectMapper.writeValueAsString(
                     Map.of("code", config.getHttpStatus(), "msg", config.getMessage())));
             return;
@@ -81,7 +89,7 @@ public class RateLimitFilter implements Filter {
         long now = System.currentTimeMillis();
         cleanupExpiredEntries(now, windowMs);
         RateLimitEntry entry = rateLimitMap.compute(key, (k, v) -> {
-            if (v == null || now - v.startTime > windowMs) {
+            if (v == null || now - v.startTime >= windowMs) {
                 return new RateLimitEntry(now, 1);
             }
             v.count++;
@@ -100,31 +108,13 @@ public class RateLimitFilter implements Filter {
             return;
         }
         if (nextCleanupAt.compareAndSet(next, now + windowMs)) {
-            rateLimitMap.entrySet().removeIf(entry -> now - entry.getValue().startTime > windowMs);
+            rateLimitMap.entrySet().removeIf(entry -> now - entry.getValue().startTime >= windowMs);
         }
     }
 
     /** 仅供测试观察内部计数规模。 */
     int trackedKeyCount() {
         return rateLimitMap.size();
-    }
-
-    /**
-     * 简单路径模式匹配：支持 {@code *} 通配符。
-     * 例如模式 "/api/sms/*" 匹配 "/api/sms/send"。
-     */
-    private String matchPattern(String path, List<String> patterns) {
-        for (String pattern : patterns) {
-            if (pattern.contains("*")) {
-                String regex = pattern.replace(".", "\\.").replace("*", ".*");
-                if (path.matches(regex)) {
-                    return pattern;
-                }
-            } else if (path.equals(pattern)) {
-                return pattern;
-            }
-        }
-        return null;
     }
 
     /** 内部计数条目 */

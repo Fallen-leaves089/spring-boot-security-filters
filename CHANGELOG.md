@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-27
+
+### Fixed
+
+- Rate-limit and CSRF path matching now strips `server.servlet.context-path` before matching.
+- Rate-limit patterns compile safely, treating only `*` as a wildcard so `+`, `(` and other regex metacharacters are literal.
+- CSRF prefixes match on path-segment boundaries (`/admin` no longer protects `/administrator`).
+- CSRF token comparison now hashes both values before the constant-time comparison.
+
+### Added
+
+- Rate-limit responses include `Retry-After`.
+
+### Changed
+
+- Rate-limit `capacity` and `window-seconds` must be at least 1.
+
 ## [1.1.0] - 2026-10-27
 
 ### Added

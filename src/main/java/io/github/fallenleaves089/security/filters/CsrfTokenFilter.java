@@ -28,10 +28,10 @@ public class CsrfTokenFilter implements Filter {
     private static final String CSRF_PARAM = "_csrf";
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private final List<String> protectedPaths;
+    private final PathMatcher pathMatcher;
 
     public CsrfTokenFilter(List<String> protectedPaths) {
-        this.protectedPaths = protectedPaths == null ? List.of() : List.copyOf(protectedPaths);
+        this.pathMatcher = new PathMatcher(protectedPaths);
     }
 
     @Override
@@ -39,8 +39,8 @@ public class CsrfTokenFilter implements Filter {
             throws IOException, ServletException {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse resp = (HttpServletResponse) response;
-        String path = req.getRequestURI();
-        if (!isProtected(path)) {
+        String path = PathMatcher.requestPath(req);
+        if (!pathMatcher.matchesPrefix(path)) {
             chain.doFilter(request, response);
             return;
         }
@@ -86,18 +86,6 @@ public class CsrfTokenFilter implements Filter {
         chain.doFilter(request, response);
     }
 
-    private boolean isProtected(String path) {
-        if (path == null) {
-            return false;
-        }
-        for (String prefix : protectedPaths) {
-            if (path.startsWith(prefix)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static String generateToken() {
         byte[] bytes = new byte[32];
         RANDOM.nextBytes(bytes);
@@ -105,8 +93,18 @@ public class CsrfTokenFilter implements Filter {
     }
 
     private static boolean constantTimeEquals(String expected, String actual) {
+        byte[] expectedHash = sha256(expected);
+        byte[] actualHash = sha256(actual);
         return MessageDigest.isEqual(
-                expected.getBytes(StandardCharsets.UTF_8),
-                actual.getBytes(StandardCharsets.UTF_8));
+                expectedHash,
+                actualHash);
+    }
+
+    private static byte[] sha256(String value) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 }
