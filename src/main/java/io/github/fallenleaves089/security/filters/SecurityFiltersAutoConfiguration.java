@@ -1,6 +1,7 @@
 package io.github.fallenleaves089.security.filters;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -11,9 +12,11 @@ import org.springframework.context.annotation.Bean;
  * 通过 Spring Boot 的 {@code META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports}
  * 机制自动加载，无需用户手动添加 {@code @ComponentScan}。
  * <p>
- * 两个过滤器均可通过属性独立开关：
+ * 所有过滤器均可通过属性独立开关：
  * <ul>
  *   <li>{@code security.rate-limit.enabled=false} 关闭限流</li>
+ *   <li>{@code security.real-ip.enabled=false} 关闭可信代理真实 IP 解析</li>
+ *   <li>{@code security.csrf.enabled=false} 关闭 CSRF 防护</li>
  *   <li>{@code security.security-headers.enabled=false} 关闭安全响应头</li>
  * </ul>
  */
@@ -22,20 +25,30 @@ import org.springframework.context.annotation.Bean;
 public class SecurityFiltersAutoConfiguration {
 
     /**
+     * Shared client-IP policy. Applications can replace this bean to integrate
+     * with an existing proxy-trust implementation.
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public ClientIpResolver clientIpResolver(SecurityFiltersProperties properties) {
+        return new ClientIpResolver(properties.getRealIp());
+    }
+
+    /**
      * 注册 {@link RateLimitFilter}。
      * 仅当 {@code security.rate-limit.enabled} 为 true（默认）时生效。
      * 由于 Filter 不由 Spring MVC 管理，此处手动 new。
      */
     @Bean
     @ConditionalOnProperty(prefix = "security.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
-    public RateLimitFilter rateLimitFilter(SecurityFiltersProperties properties) {
-        return new RateLimitFilter(properties);
+    public RateLimitFilter rateLimitFilter(SecurityFiltersProperties properties, ClientIpResolver clientIpResolver) {
+        return new RateLimitFilter(properties, clientIpResolver);
     }
 
     @Bean
     @ConditionalOnProperty(prefix = "security.real-ip", name = "enabled", havingValue = "true", matchIfMissing = true)
-    public RealIpFilter realIpFilter() {
-        return new RealIpFilter();
+    public RealIpFilter realIpFilter(ClientIpResolver clientIpResolver) {
+        return new RealIpFilter(clientIpResolver);
     }
 
     @Bean

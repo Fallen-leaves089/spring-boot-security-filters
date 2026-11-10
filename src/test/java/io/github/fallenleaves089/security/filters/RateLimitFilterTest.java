@@ -134,6 +134,59 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void shouldNotBypassLimitWithForgedLeftmostXff() throws Exception {
+        SecurityFiltersProperties properties = new SecurityFiltersProperties();
+        properties.getRateLimit().setPaths(List.of("/api/login"));
+        properties.getRateLimit().setCapacity(1);
+        RateLimitFilter filter = new RateLimitFilter(properties);
+
+        for (int i = 0; i < 2; i++) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/login");
+            request.setRemoteAddr("127.0.0.1");
+            request.addHeader("X-Forwarded-For", "198.51.100." + (i + 1) + ", 203.0.113.7");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, new MockFilterChain());
+            assertEquals(i == 0 ? 200 : 429, response.getStatus());
+        }
+    }
+
+    @Test
+    void shouldRespectDisabledRealIpResolutionInRateLimitKey() throws Exception {
+        SecurityFiltersProperties properties = new SecurityFiltersProperties();
+        properties.getRealIp().setEnabled(false);
+        properties.getRateLimit().setPaths(List.of("/api/login"));
+        properties.getRateLimit().setCapacity(1);
+        RateLimitFilter filter = new RateLimitFilter(properties);
+
+        for (int i = 0; i < 2; i++) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/login");
+            request.setRemoteAddr("127.0.0.1");
+            request.addHeader("X-Forwarded-For", "198.51.100." + (i + 1));
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, new MockFilterChain());
+            assertEquals(i == 0 ? 200 : 429, response.getStatus());
+        }
+    }
+
+    @Test
+    void shouldUseConfiguredProxyCidrForRateLimitKey() throws Exception {
+        SecurityFiltersProperties properties = new SecurityFiltersProperties();
+        properties.getRealIp().setTrustedProxies(List.of("10.0.0.0/8"));
+        properties.getRateLimit().setPaths(List.of("/api/login"));
+        properties.getRateLimit().setCapacity(1);
+        RateLimitFilter filter = new RateLimitFilter(properties);
+
+        for (int i = 0; i < 2; i++) {
+            MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/login");
+            request.setRemoteAddr("10.0.0.5");
+            request.addHeader("X-Forwarded-For", "198.51.100.7");
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            filter.doFilter(request, response, new MockFilterChain());
+            assertEquals(i == 0 ? 200 : 429, response.getStatus());
+        }
+    }
+
+    @Test
     void shouldRemoveExpiredCounters() throws Exception {
         SecurityFiltersProperties properties = new SecurityFiltersProperties();
         properties.getRateLimit().setPaths(List.of("/api/login"));

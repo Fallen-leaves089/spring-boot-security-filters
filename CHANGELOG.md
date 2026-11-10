@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `RealIpFilter` now trusts forwarded headers only when the direct peer matches an explicit IP/CIDR allowlist. The default is loopback only; other private proxy ranges must be configured.
+- `X-Forwarded-For` is parsed from right to left, so a client cannot bypass the policy by prepending a forged address. Malformed chains fall back to `remoteAddr`.
+
+### Added
+
+- `security.real-ip.trusted-proxies` for an explicit proxy IP/CIDR allowlist.
+- Shared `ClientIpResolver` bean, overridable with `@ConditionalOnMissingBean`, so both filters use one policy.
+
+### Changed
+
+- `RateLimitFilter` now respects `security.real-ip.enabled=false` and uses the shared resolver instead of the static compatibility helper. Existing constructors remain available.
+
 ## [1.2.0] - 2026-10-27
 
 ### Fixed

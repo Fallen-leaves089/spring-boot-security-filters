@@ -44,16 +44,16 @@ curl -I http://localhost:8080/api/login
 |--------|------|-------|
 | `SecurityHeadersFilter` | 自动注入 8 类 HTTP 安全响应头（CSP / HSTS / X-Frame-Options 等），防御 XSS、点击劫持、MIME 嗅探 | 1 |
 | `RateLimitFilter` | 基于固定窗口的 API 限流，按 IP + 路径模式独立计数，触发后返回 429 | 2 |
-| `RealIpFilter` | 仅当直连地址是可信内网代理时解析真实客户端 IP，避免伪造 `X-Forwarded-For` | 1 |
+| `RealIpFilter` | 仅当直连地址命中显式配置的代理 CIDR 时解析真实客户端 IP，并从右向左遍历 `X-Forwarded-For` | 1 |
 | `CsrfTokenFilter` | 为可配置路径前缀提供 Session 级 CSRF Token 校验，支持 `X-CSRF-TOKEN` 或 `_csrf` | 3 |
 | `MagicBytesValidator` | 校验图片/视频文件魔数与声称扩展名是否一致 | utility |
 
 ## 边界与限制
 
 - `RateLimitFilter` 计数存在 JVM 内存中，并会惰性清理过期窗口；多实例部署请使用共享存储或网关限流。
-- `RateLimitFilter` 与 `RealIpFilter` 使用相同的可信代理规则解析客户端 IP；直连客户端无法通过伪造 `X-Forwarded-For` 绕过限流。
+- `RateLimitFilter` 与 `RealIpFilter` 共享同一套客户端 IP 策略；直连客户端无法通过伪造 `X-Forwarded-For` 绕过限流。
 - `CsrfTokenFilter` 基于 Session，不适用于完全无状态的 Token API。
-- `RealIpFilter` 只信任回环/私有代理地址；必须确保网络边界不允许客户端直接伪造 `X-Forwarded-For` 访问应用。
+- `RealIpFilter` 只信任显式配置的代理 CIDR，默认仅回环地址（`127.0.0.0/8`、`::1/128`）；局域网、Docker 等私有代理必须手动加入。代理必须追加或覆盖 `X-Forwarded-For`。
 - `MagicBytesValidator` 是工具类，需要在文件上传处理中显式调用，不会自动扫描上传文件；`matches` 会从传入的流读取最多 12 字节且不会自动重置流位置。
 
 ---
@@ -122,6 +122,9 @@ security:
     csp-policy: "default-src 'self'"
   real-ip:
     enabled: true
+    trusted-proxies:
+      - "127.0.0.0/8"
+      - "::1/128"
   csrf:
     enabled: true
     protected-paths:
@@ -189,6 +192,22 @@ security:
 
 ---
 
+## 可信代理与 X-Forwarded-For
+
+`security.real-ip.trusted-proxies` 使用 IP/CIDR 白名单，不接受主机名和端口。默认只信任回环地址；其他代理必须显式加入。解析时从 `X-Forwarded-For` 最右侧开始，跳过可信代理，取最近的不可信地址；无法解析时回退到 `remoteAddr`。反向代理必须追加或覆盖该请求头，不能原样透传客户端提供的值。
+
+```yaml
+security:
+  real-ip:
+    enabled: true
+    trusted-proxies:
+      - "127.0.0.0/8"
+      - "::1/128"
+      - "10.0.0.0/8"
+```
+
+---
+
 ## 注入的安全响应头
 
 引入依赖后，每个 HTTP 响应将自动包含：
@@ -230,11 +249,18 @@ security.csrf.enabled=false
 
 ---
 
+## 替换客户端 IP 解析器
+
+模块暴露共享的 `ClientIpResolver` Bean。已有代理信任策略的应用可以自行定义一个同类型 Bean；`@ConditionalOnMissingBean` 会避免重复创建，两个过滤器都会使用替换后的实现。设置 `security.real-ip.enabled=false` 时，限流器和真实 IP 过滤器都会停止解析转发头。
+
+---
+
 ## 架构说明
 
 ```
 spring-boot-security-filters
 ├── SecurityFiltersProperties      -- @ConfigurationProperties，统一管理所有配置
+├── ClientIpResolver               -- 共享可信代理与 X-Forwarded-For 策略
 ├── SecurityHeadersFilter          -- Filter: 注入安全响应头
 ├── RateLimitFilter                -- Filter: 固定窗口 API 限流
 ├── RealIpFilter                   -- Filter: 可信代理真实 IP 解析
