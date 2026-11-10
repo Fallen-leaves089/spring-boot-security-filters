@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `RateLimitFilter` now respects `security.real-ip.enabled=false` and uses the shared resolver instead of the static compatibility helper. Existing constructors remain available.
+- Keep the starter on the maintained Spring Boot 3.5 line (`3.5.16`) so existing Spring Boot 3 consumers are not broken by an implicit major upgrade.
 
 ## [1.2.0] - 2026-10-27
 
