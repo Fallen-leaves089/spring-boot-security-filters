@@ -16,7 +16,7 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 
 - **Problem solved:** adds reusable security filters to a Spring MVC app without writing each `Filter` yourself.
 - **What you get:** security headers, fixed-window rate limiting, trusted-proxy real IP resolution, session CSRF tokens, and magic-byte validation.
-- **Use it when:** you want a small server-side baseline for a Spring Boot 3.2.x / Java 17 servlet app.
+- **Use it when:** you want a small server-side baseline for a Spring Boot 3.5.x / Java 17 servlet app.
 - **Not for:** replacing a WAF/API gateway. Rate limiting is per JVM, CSRF is session-based, and `MagicBytesValidator` is a utility you call from upload handling.
 
 ## Shortest demo
@@ -101,7 +101,7 @@ dependencies {
 }
 ```
 
-> Requires Spring Boot 3.2.x and Java 17.
+> Requires Spring Boot 3.5.x and Java 17.
 
 ---
 

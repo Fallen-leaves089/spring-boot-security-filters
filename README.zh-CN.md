@@ -14,7 +14,7 @@ MIT License. Copyright (c) 2024 fallen-leaves089.
 
 - **解决什么**：给 Spring MVC 项目加一层可复用的安全过滤，不用自己逐个实现 `Filter`。
 - **你能得到**：安全响应头、固定窗口限流、可信代理真实 IP、Session CSRF、文件魔数校验。
-- **适合**：Spring Boot 3.2.x / Java 17 的 Servlet 应用，需要快速建立基础防护。
+- **适合**：Spring Boot 3.5.x / Java 17 的 Servlet 应用，需要快速建立基础防护。
 - **不适合**：替代 WAF/API 网关。限流是单 JVM 内存计数，CSRF 基于 Session，`MagicBytesValidator` 需要在上传处理中手动调用。
 
 ## 最短演示
@@ -99,7 +99,7 @@ dependencies {
 }
 ```
 
-> 需要 Spring Boot 3.2.x + Java 17。
+> 需要 Spring Boot 3.5.x + Java 17。
 
 ---
 
