@@ -46,16 +46,16 @@ The response includes the security headers; the 61st request from the same IP re
 |--------|---------|-------|
 | `SecurityHeadersFilter` | Automatically injects 8 HTTP security response headers (CSP / HSTS / X-Frame-Options, etc.) to protect against XSS, clickjacking, and MIME sniffing. | 1 |
 | `RateLimitFilter` | Fixed-window API rate limiting with independent counters by IP + path pattern. Returns 429 when the limit is exceeded. | 2 |
-| `RealIpFilter` | Resolves the real client IP only when the direct remote address is a trusted private proxy, preventing forged `X-Forwarded-For`. | 1 |
+| `RealIpFilter` | Resolves the real client IP only when the direct remote address matches an explicitly configured proxy CIDR, walking `X-Forwarded-For` from right to left. | 1 |
 | `CsrfTokenFilter` | Session-bound CSRF tokens for configurable path prefixes, validating `X-CSRF-TOKEN` or `_csrf`. | 3 |
 | `MagicBytesValidator` | Pure utility that validates image/video magic bytes against the claimed extension. | utility |
 
 ## Scope and limits
 
 - `RateLimitFilter` stores counters in JVM memory and evicts expired windows lazily. For multiple instances, use a shared store or a gateway.
-- `RateLimitFilter` resolves the client IP through the same trusted-proxy rules as `RealIpFilter`; a direct client cannot bypass the limit by setting `X-Forwarded-For`.
+- `RateLimitFilter` and `RealIpFilter` share one client-IP policy; a direct client cannot bypass the limit by setting `X-Forwarded-For`.
 - `CsrfTokenFilter` is session-bound. It is not a replacement for token-based CSRF defenses in stateless APIs.
-- `RealIpFilter` only trusts loopback/private proxy addresses. Make sure the network boundary prevents clients from reaching the app directly with a forged `X-Forwarded-For`.
+- `RealIpFilter` trusts only the configured proxy CIDRs. The default is loopback only (`127.0.0.0/8`, `::1/128`); LAN, Docker, and other private proxies must be added explicitly. The proxy must append to or overwrite `X-Forwarded-For`.
 - `MagicBytesValidator` is a utility; call it when handling uploads. It does not scan files automatically, and `matches` consumes up to 12 bytes from the supplied stream without resetting it.
 
 ---
@@ -124,6 +124,9 @@ security:
     csp-policy: "default-src 'self'"
   real-ip:
     enabled: true
+    trusted-proxies:
+      - "127.0.0.0/8"
+      - "::1/128"
   csrf:
     enabled: true
     protected-paths:
@@ -193,6 +196,12 @@ security:
     # Whether trusted-proxy IP resolution is enabled. Default: true.
     enabled: true
 
+    # Explicit proxy IP/CIDR allowlist. Hostnames and ports are rejected.
+    # Default: loopback only.
+    trusted-proxies:
+      - "127.0.0.0/8"
+      - "::1/128"
+
   # ---------- Session CSRF protection ----------
   csrf:
     # Whether CSRF protection is enabled. Default: true.
@@ -245,6 +254,10 @@ security.csrf.enabled=false
 
 If you only need security headers and not rate limiting (or vice versa), set the corresponding `enabled: false`. Filters are assembled with `@ConditionalOnProperty`, so a disabled filter bean is not created.
 
+## Replacing the client-IP resolver
+
+The module exposes a shared `ClientIpResolver` bean. Applications that already have a proxy-trust implementation can define their own bean; `@ConditionalOnMissingBean` prevents a duplicate and both filters use the replacement. Setting `security.real-ip.enabled=false` disables forwarded-header parsing for the rate limiter as well as the real-IP filter.
+
 ---
 
 ## Architecture
@@ -252,6 +265,7 @@ If you only need security headers and not rate limiting (or vice versa), set the
 ```
 spring-boot-security-filters
 ├── SecurityFiltersProperties      -- @ConfigurationProperties; manages all configuration
+├── ClientIpResolver               -- Shared trusted-proxy and X-Forwarded-For policy
 ├── SecurityHeadersFilter          -- Filter: injects security headers
 ├── RateLimitFilter                -- Filter: fixed-window API rate limiting
 ├── RealIpFilter                   -- Filter: trusted-proxy real IP resolution

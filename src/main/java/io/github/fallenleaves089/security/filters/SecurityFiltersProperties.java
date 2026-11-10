@@ -170,8 +170,17 @@ public class SecurityFiltersProperties {
         }
     }
 
+    /**
+     * Trusted-proxy real IP configuration.
+     */
     public static class RealIp {
         private boolean enabled = true;
+
+        /**
+         * Explicit proxy IP/CIDR allowlist. Hostnames and ports are rejected.
+         * Defaults to loopback only; other private ranges must be opted in.
+         */
+        private List<String> trustedProxies = new ArrayList<>(ClientIpResolver.DEFAULT_TRUSTED_PROXIES);
 
         public boolean isEnabled() {
             return enabled;
@@ -179,6 +188,14 @@ public class SecurityFiltersProperties {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
+        }
+
+        public List<String> getTrustedProxies() {
+            return trustedProxies;
+        }
+
+        public void setTrustedProxies(List<String> trustedProxies) {
+            this.trustedProxies = trustedProxies == null ? new ArrayList<>() : trustedProxies;
         }
     }
 

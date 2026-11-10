@@ -8,6 +8,7 @@ import org.springframework.core.annotation.Order;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -25,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RateLimitFilter implements Filter {
 
     private final SecurityFiltersProperties.RateLimit config;
+    private final ClientIpResolver clientIpResolver;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final PathMatcher pathMatcher;
 
@@ -35,7 +37,12 @@ public class RateLimitFilter implements Filter {
     private final AtomicLong nextCleanupAt = new AtomicLong(0);
 
     public RateLimitFilter(SecurityFiltersProperties properties) {
+        this(properties, new ClientIpResolver(properties.getRealIp()));
+    }
+
+    public RateLimitFilter(SecurityFiltersProperties properties, ClientIpResolver clientIpResolver) {
         this.config = properties.getRateLimit();
+        this.clientIpResolver = Objects.requireNonNull(clientIpResolver, "clientIpResolver must not be null");
         this.pathMatcher = new PathMatcher(this.config.getPaths());
         if (this.config.getCapacity() < 1) {
             throw new IllegalArgumentException("security.rate-limit.capacity must be at least 1");
@@ -57,8 +64,7 @@ public class RateLimitFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
         String path = PathMatcher.requestPath(req);
-        // 只信任来自回环/私有代理的 X-Forwarded-For，避免客户端伪造 IP 绕过限流。
-        String clientIp = RealIpFilter.resolve(req);
+        String clientIp = clientIpResolver.resolve(req);
 
         // 检查请求路径是否命中限流模式
         String matchedPattern = pathMatcher.match(path);
