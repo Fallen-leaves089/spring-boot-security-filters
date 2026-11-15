@@ -1,6 +1,7 @@
 package io.github.fallenleaves089.security.filters;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.web.util.UrlPathHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +14,8 @@ import java.util.regex.Pattern;
  * pattern is compiled, so paths containing regex metacharacters are safe.</p>
  */
 final class PathMatcher {
+
+    private static final UrlPathHelper URL_PATH_HELPER = createPathHelper();
 
     private final List<String> patterns;
     private final List<Pattern> compiled;
@@ -61,24 +64,27 @@ final class PathMatcher {
     }
 
     /**
-     * Returns the application-relative request path. Servlet applications
-     * configured with {@code server.servlet.context-path} otherwise see the
-     * context prefix in {@link HttpServletRequest#getRequestURI()}.
+     * Returns the application-relative request path with matrix parameters
+     * removed. The request URI must not be used directly for security
+     * matching: containers can route paths such as
+     * {@code /admin;foo/users} to the same handler as {@code /admin/users}.
      */
     static String requestPath(HttpServletRequest request) {
-        String uri = request.getRequestURI();
-        if (uri == null || uri.isEmpty()) {
+        String path = URL_PATH_HELPER.getPathWithinApplication(request);
+        if (path == null || path.isEmpty()) {
             return "/";
         }
-        String contextPath = request.getContextPath();
-        if (contextPath != null
-                && !contextPath.isEmpty()
-                && !"/".equals(contextPath)
-                && (uri.equals(contextPath) || uri.startsWith(contextPath + "/"))) {
-            String stripped = uri.substring(contextPath.length());
-            return stripped.isEmpty() ? "/" : stripped;
-        }
-        return uri;
+        // UrlPathHelper removes semicolon content before decoding the URI.
+        // Remove it again so encoded variants such as %3B are normalized too.
+        path = URL_PATH_HELPER.removeSemicolonContent(path);
+        return path.isEmpty() ? "/" : path;
+    }
+
+    private static UrlPathHelper createPathHelper() {
+        UrlPathHelper helper = new UrlPathHelper();
+        helper.setRemoveSemicolonContent(true);
+        helper.setUrlDecode(true);
+        return helper;
     }
 
     private static boolean isSegmentPrefix(String path, String prefix) {

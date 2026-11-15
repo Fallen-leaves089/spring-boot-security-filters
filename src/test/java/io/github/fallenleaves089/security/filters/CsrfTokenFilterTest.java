@@ -114,4 +114,16 @@ class CsrfTokenFilterTest {
 
         assertNotNull(request.getSession(false));
     }
+
+    @Test
+    void shouldTreatNullProtectedPathsAsEmptyList() throws Exception {
+        SecurityFiltersProperties properties = new SecurityFiltersProperties();
+        properties.getCsrf().setProtectedPaths(null);
+        CsrfTokenFilter filter = new CsrfTokenFilter(properties.getCsrf().getProtectedPaths());
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/admin");
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+
+        assertNull(request.getSession(false));
+    }
 }

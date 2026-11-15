@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `RealIpFilter` now trusts forwarded headers only when the direct peer matches an explicit IP/CIDR allowlist. The default is loopback only; other private proxy ranges must be configured.
 - `X-Forwarded-For` is parsed from right to left, so a client cannot bypass the policy by prepending a forged address. Malformed chains fall back to `remoteAddr`.
+- Path matching now uses Spring's application-relative URL normalization and strips matrix parameters after decoding, preventing CSRF and rate-limit bypasses such as `/admin;foo` and `/admin%3Bfoo`.
+- `X-XSS-Protection` now emits `0` to disable obsolete legacy browser XSS auditors; CSP remains the primary XSS control.
 
 ### Added
 
@@ -20,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `RateLimitFilter` now respects `security.real-ip.enabled=false` and uses the shared resolver instead of the static compatibility helper. Existing constructors remain available.
+- Null `security.rate-limit.paths` and `security.csrf.protected-paths` values are normalized to empty lists.
 - Keep the starter on the maintained Spring Boot 3.5 line (`3.5.16`) so existing Spring Boot 3 consumers are not broken by an implicit major upgrade.
 
 ## [1.2.0] - 2026-10-27

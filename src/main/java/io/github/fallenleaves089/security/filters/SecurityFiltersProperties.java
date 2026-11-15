@@ -71,7 +71,7 @@ public class SecurityFiltersProperties {
         }
 
         public void setPaths(List<String> paths) {
-            this.paths = paths;
+            this.paths = paths == null ? new ArrayList<>() : new ArrayList<>(paths);
         }
 
         public int getCapacity() {
@@ -216,7 +216,7 @@ public class SecurityFiltersProperties {
         }
 
         public void setProtectedPaths(List<String> protectedPaths) {
-            this.protectedPaths = protectedPaths;
+            this.protectedPaths = protectedPaths == null ? new ArrayList<>() : new ArrayList<>(protectedPaths);
         }
     }
 }

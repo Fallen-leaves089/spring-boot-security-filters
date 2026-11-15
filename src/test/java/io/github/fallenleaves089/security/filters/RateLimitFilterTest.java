@@ -12,6 +12,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class RateLimitFilterTest {
 
     @Test
+    void shouldTreatNullPathsAsEmptyList() throws Exception {
+        SecurityFiltersProperties properties = new SecurityFiltersProperties();
+        properties.getRateLimit().setPaths(null);
+        RateLimitFilter filter = new RateLimitFilter(properties);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/login");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        filter.doFilter(request, response, new MockFilterChain());
+
+        assertEquals(200, response.getStatus());
+        assertEquals(0, filter.trackedKeyCount());
+    }
+
+    @Test
     void shouldReturn429WhenLimitExceeded() throws Exception {
         SecurityFiltersProperties properties = new SecurityFiltersProperties();
         properties.getRateLimit().setPaths(List.of("/api/login"));

@@ -215,7 +215,7 @@ security:
 | 响应头 | 默认值 |
 |--------|--------|
 | `X-Content-Type-Options` | `nosniff` |
-| `X-XSS-Protection` | `1; mode=block` |
+| `X-XSS-Protection` | `0`（禁用已过时的旧浏览器 XSS 审计器；CSP 是主要防护） |
 | `Content-Security-Policy` | 可配置 |
 | `X-Download-Options` | `noopen` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
