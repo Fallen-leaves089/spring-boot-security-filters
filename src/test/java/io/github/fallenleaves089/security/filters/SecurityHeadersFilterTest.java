@@ -22,7 +22,7 @@ class SecurityHeadersFilterTest {
         filter.doFilter(request, response, new MockFilterChain());
 
         assertEquals("nosniff", response.getHeader("X-Content-Type-Options"));
-        assertEquals("1; mode=block", response.getHeader("X-XSS-Protection"));
+        assertEquals("0", response.getHeader("X-XSS-Protection"));
         assertEquals("default-src 'self'; frame-ancestors 'none'", response.getHeader("Content-Security-Policy"));
         assertEquals("DENY", response.getHeader("X-Frame-Options"));
         assertNull(response.getHeader("Strict-Transport-Security"));

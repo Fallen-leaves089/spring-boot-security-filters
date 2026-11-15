@@ -222,7 +222,7 @@ After adding the dependency, every HTTP response automatically includes:
 | Header | Default value |
 |--------|---------------|
 | `X-Content-Type-Options` | `nosniff` |
-| `X-XSS-Protection` | `1; mode=block` |
+| `X-XSS-Protection` | `0` (disables obsolete legacy XSS auditors; CSP is the primary control) |
 | `Content-Security-Policy` | configurable |
 | `X-Download-Options` | `noopen` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |

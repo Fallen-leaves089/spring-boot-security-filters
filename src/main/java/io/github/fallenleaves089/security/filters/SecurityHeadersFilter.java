@@ -41,8 +41,8 @@ public class SecurityHeadersFilter implements Filter {
         // X-Content-Type-Options — 防止 MIME 嗅探
         res.setHeader("X-Content-Type-Options", "nosniff");
 
-        // X-XSS-Protection — 启用浏览器 XSS 过滤器
-        res.setHeader("X-XSS-Protection", "1; mode=block");
+        // Disable obsolete XSS auditors in legacy browsers; CSP below is the modern control.
+        res.setHeader("X-XSS-Protection", "0");
 
         // Content-Security-Policy — 限制资源加载来源
         res.setHeader("Content-Security-Policy", config.getCspPolicy());
